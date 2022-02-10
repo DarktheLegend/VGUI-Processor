@@ -196,10 +196,10 @@ void CreateText(int client, const char[] plugin, const char[] name, VGUIParams p
 	int ent = CreateEntityByName("vgui_world_text_panel");
 	if (ent == -1)return;
 	int textLen = params.GetTextLength();
+	bool validText;
 	char[] text = new char[textLen];
-	if (!params.GetText(text, textLen)) {
+	if (!(validText = params.GetText(text, textLen))) {
 		textLen = 1;
-		strcopy(text, textLen, "");
 	}
 	float Xaxis, Yaxis;
 	if (!params.GetXaxis(Xaxis))Xaxis = 0.0;
@@ -207,7 +207,7 @@ void CreateText(int client, const char[] plugin, const char[] name, VGUIParams p
 	int color[4];
 	if (!params.GetColor(color))color = { 255, 255, 255, 255 };
 	static char buff[32];
-	DispatchKeyValue(ent, "displaytext", text);
+	DispatchKeyValue(ent, "displaytext", validText ? text : "");
 	DispatchKeyValue(ent, "font", "MissionSelectLarge");
 	DispatchKeyValue(ent, "height", "4");
 	DispatchKeyValue(ent, "width", "4");
@@ -223,7 +223,7 @@ void CreateText(int client, const char[] plugin, const char[] name, VGUIParams p
 		json = new JSON_Object();
 	}
 	json.SetInt("entity", EntIndexToEntRef(ent));
-	json.SetString("text", text);
+	json.SetString("text", validText ? text : "");
 	json.SetInt("textlen", textLen);
 	if (!VGUIText[client].HasKey(plugin))VGUIText[client].SetObject(plugin, new JSON_Object());
 	VGUIText[client].GetObject(plugin).SetObject(name, json);
@@ -386,10 +386,10 @@ bool CheckName(int client, const char[] plugin, const char[] name) {
 public int Native_CreateText(Handle plugin, int numParams) {
 	int client = GetNativeCell(1);
 	if (!CheckClient(client))return view_as<int>(false);
-	static  char name[64];
+	static char name[64];
 	GetNativeString(2, name, sizeof(name));
 	VGUIParams params = GetNativeCell(3);
-	static  char szPlugin[16];
+	static char szPlugin[16];
 	IntToString(view_as<int>(plugin), szPlugin, sizeof(szPlugin));
 	CreateText(client, szPlugin, name, params);
 	return view_as<int>(true);
