@@ -41,29 +41,32 @@ native bool VGUI_ExistText(int client, const char[] name);
 native void VGUI_PluginUnload();
 
 methodmap VGUIParams < JSON_Object {
-	public void SetColor(const int color[4]) {
+	public void SetColor(const int color[4], bool hidden = false) {
 		static char szColor[16];
 		FormatEx(szColor, sizeof(szColor), "%d %d %d %d", color[0], color[1], color[2], color[3]);
-		this.SetString("color", szColor);
+		this.SetColorString(szColor, hidden);
 	}
 	
-	public void SetColorString(const char[] color) {
+	public void SetColorString(const char[] color, bool hidden = false) {
 		this.SetString("color", color);
+		this.SetKeyHidden("color", hidden)
 	}
 	
-	public void SetXaxis(float Xaxis) {
+	public void SetXaxis(float Xaxis, bool hidden = false) {
 		this.SetFloat("x-axis", Xaxis);
-		this.GetXaxis(Xaxis);
+		this.SetKeyHidden("x-axis", hidden)
 	}
 	
-	public void SetYaxis(float Yaxis) {
+	public void SetYaxis(float Yaxis, bool hidden = false) {
 		this.SetFloat("y-axis", Yaxis);
-		this.GetYaxis(Yaxis);
+		this.SetKeyHidden("y-axis", hidden)
 	}
 	
-	public void SetText(const char[] text, const int maxlen) {
+	public void SetText(const char[] text, const int maxlen, bool hidden = false) {
 		this.SetString("text", text);
 		this.SetInt("textlen", maxlen);
+		this.SetKeyHidden("text", hidden)
+		this.SetKeyHidden("textlen", hidden)
 	}
 	
 	public bool GetColor(int color[4]) {
