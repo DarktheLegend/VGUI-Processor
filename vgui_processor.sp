@@ -132,7 +132,8 @@ public Action Hook_Spawn(int client) {
 }
 
 public Action Hook_SetTransmit(int entity, int client) {
-	static char classname[64];
+	return Plugin_Continue;
+	/*static char classname[64]; no need, causes the crash of the client
 	GetEntityClassname(entity, classname, sizeof(classname));
 	if (strcmp(classname, "vgui_world_text_panel"))return Plugin_Continue;
 	static char plugin[16], name[64];
@@ -159,7 +160,7 @@ public Action Hook_SetTransmit(int entity, int client) {
 		snapPlugins.Close();
 		if (entity == ent)return Plugin_Continue;
 	}
-	return Plugin_Handled;
+	return Plugin_Handled;*/
 }
 
 
