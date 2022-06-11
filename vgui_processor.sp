@@ -1,9 +1,9 @@
 #pragma semicolon 1
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define PLUGIN_AUTHOR "Dark"
-#define PLUGIN_VERSION "0.1"
+#define PLUGIN_VERSION "0.2"
 #define LoopPlayers(%0) for (int %0 = 1; %0 <= MaxClients; %0++) if (IsClientInGame(%0) && !IsFakeClient(%0))
 
 #include <sourcemod>
@@ -36,6 +36,7 @@ public APLRes AskPluginLoad2(Handle hMyself, bool bLate, char[] sError, int iErr
 
 public void OnPluginStart() {
 	HookEvent("player_death", Event_PlayerDeath);
+	HookEvent("player_team", Event_PlayerTeam);
 	LoopPlayers(client) {
 		VGUIText[client] = new JSON_Object();
 		SDKHook(client, SDKHook_Spawn, Hook_Spawn);
@@ -60,7 +61,6 @@ public void OnPluginEnd() {
 					if (json_is_meta_key(key))continue;
 					ent = json.GetObject(key).GetInt("entity");
 					if (IsValidEntity(ent) && ent) {
-						SDKUnhook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
 						RemoveEntity(ent);
 					}
 				}
@@ -96,7 +96,6 @@ public void OnClientDisconnect(int client) {
 					if (json_is_meta_key(key))continue;
 					ent = json.GetObject(key).GetInt("entity");
 					if (IsValidEntity(ent) && ent) {
-						SDKUnhook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
 						RemoveEntity(ent);
 					}
 				}
@@ -131,39 +130,6 @@ public Action Hook_Spawn(int client) {
 	return Plugin_Continue;
 }
 
-public Action Hook_SetTransmit(int entity, int client) {
-	return Plugin_Continue;
-	/*static char classname[64]; no need, causes the crash of the client
-	GetEntityClassname(entity, classname, sizeof(classname));
-	if (strcmp(classname, "vgui_world_text_panel"))return Plugin_Continue;
-	static char plugin[16], name[64];
-	JSON_Object json;
-	StringMapSnapshot snapPlugins;
-	StringMapSnapshot snapTexts;
-	int ent;
-	if (VGUIText[client] != null && VGUIText[client].Size) {
-		snapPlugins = VGUIText[client].Snapshot();
-		for (int i = 0; i < snapPlugins.Length; i++) {
-			snapPlugins.GetKey(i, plugin, sizeof(plugin));
-			if (json_is_meta_key(plugin))continue;
-			json = VGUIText[client].GetObject(plugin);
-			snapTexts = json.Snapshot();
-			for (int j = 0; j < snapTexts.Length; j++) {
-				snapTexts.GetKey(j, name, sizeof(name));
-				if (json_is_meta_key(name))continue;
-				ent = EntRefToEntIndex(json.GetObject(name).GetInt("entity"));
-				if (entity == ent)break;
-			}
-			snapTexts.Close();
-			if (entity == ent)break;
-		}
-		snapPlugins.Close();
-		if (entity == ent)return Plugin_Continue;
-	}
-	return Plugin_Handled;*/
-}
-
-
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (VGUIText[client] != null && VGUIText[client].Size) {
@@ -182,7 +148,33 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 				if (json_is_meta_key(key))continue;
 				ent = json.GetObject(key).GetInt("entity");
 				if (IsValidEntity(ent) && ent) {
-					SDKUnhook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
+					RemoveEntity(ent);
+				}
+			}
+			snapTexts.Close();
+		}
+		snapPlugins.Close();
+	}
+}
+
+public void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast) {
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (VGUIText[client] != null && VGUIText[client].Size) {
+		char key[64];
+		int ent;
+		JSON_Object json;
+		StringMapSnapshot snapPlugins = VGUIText[client].Snapshot();
+		StringMapSnapshot snapTexts;
+		for (int i = 0; i < snapPlugins.Length; i++) {
+			snapPlugins.GetKey(i, key, sizeof(key));
+			if (json_is_meta_key(key))continue;
+			json = VGUIText[client].GetObject(key);
+			snapTexts = json.Snapshot();
+			for (int j = 0; j < snapTexts.Length; j++) {
+				snapTexts.GetKey(j, key, sizeof(key));
+				if (json_is_meta_key(key))continue;
+				ent = json.GetObject(key).GetInt("entity");
+				if (IsValidEntity(ent) && ent) {
 					RemoveEntity(ent);
 				}
 			}
@@ -232,7 +224,6 @@ void CreateText(int client, const char[] plugin, const char[] name, VGUIParams p
 	DispatchSpawn(ent);
 	SetVariantString("!activator");
 	AcceptEntityInput(ent, "SetParent", GetEntPropEnt(client, Prop_Send, "m_hViewModel"));
-	SDKHook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
 }
 
 void TeleportText(int client, const char[] plugin, const char[] name, float Xaxis = 0.0, float Yaxis = 0.0) {
@@ -356,7 +347,6 @@ void DeleteText(int client, const char[] plugin, const char[] name, bool cleanup
 	JSON_Object json = VGUIText[client].GetObject(plugin).GetObject(name);
 	int ent = json.GetInt("entity");
 	if (IsValidEntity(ent) && ent) {
-		SDKUnhook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
 		RemoveEntity(ent);
 	}
 	if (cleanup) {
@@ -445,7 +435,6 @@ public int Native_PluginUnload(Handle plugin, int numParams) {
 			if (json_is_meta_key(text))continue;
 			ent = json.GetObject(text).GetInt("entity");
 			if (IsValidEntity(ent) && ent) {
-				SDKUnhook(ent, SDKHook_SetTransmit, Hook_SetTransmit);
 				RemoveEntity(ent);
 			}
 		}
