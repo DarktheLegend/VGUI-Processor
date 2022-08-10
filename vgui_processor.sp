@@ -277,18 +277,17 @@ void ChangeText(int client, const char[] plugin, const char[] name, VGUIParams p
 	}
 	JSON_Object json = VGUIText[client].GetObject(plugin).GetObject(name);
 	int ent = json.GetInt("entity");
-	if (!IsValidEntity(ent)) {
-		if (IsPlayerAlive(client)) {
-			LogError("Change: The text entity %i does not exist", ent);
-			#if DEBUG == 1
-				PrintToChat(client, "Change: The text entity %i does not exist", ent);
-			#endif
-			return;
-		}
-	} else {
+	float newXaxis, newYaxis;
+	int textlen = params.GetTextLength();
+	char[] newText = new char[textlen];
+	int maxlen = json.GetInt("textlen");
+	char[] text = new char[maxlen];
+	bool valid = IsValidEntity(ent);
+	bool alive = IsPlayerAlive(client);
+	if (valid) {
 		static char buff[64];
 		GetEntityClassname(ent, buff, sizeof(buff));
-		if (strcmp(buff, "vgui_world_text_panel") && IsPlayerAlive(client)) {
+		if (strcmp(buff, "vgui_world_text_panel") && alive) {
 			LogError("Change: Invalid text entity %i", ent);
 			#if DEBUG == 1
 				PrintToChat(client, "Change: Invalid text entity %i", ent);
@@ -296,27 +295,22 @@ void ChangeText(int client, const char[] plugin, const char[] name, VGUIParams p
 			return;
 		}
 	}
-	float newXaxis, newYaxis;
-	int textlen = params.GetTextLength();
-	char[] newText = new char[textlen];
-	int maxlen = json.GetInt("textlen");
-	char[] text = new char[maxlen];
 	if (params.GetText(newText, textlen)) {
 		//change text
 		json.GetString("text", text, maxlen);
 		if (strcmp(newText, text)) {
-			if (IsPlayerAlive(client))SetEntPropString(ent, Prop_Send, "m_szDisplayText", newText);
+			if (alive && valid)SetEntPropString(ent, Prop_Send, "m_szDisplayText", newText);
 			json.SetString("text", newText);
 			json.SetInt("textlen", textlen);
 		}
 	}
 	if (params.GetXaxis(newXaxis) || params.GetYaxis(newYaxis)) {
+		//change position
 		params.GetYaxis(newYaxis);
-		//float vec[3], ang[3];
 		float Xaxis, Yaxis;
 		view_as<VGUIParams>(json).GetXaxis(Xaxis);
 		view_as<VGUIParams>(json).GetYaxis(Yaxis);
-		if (Xaxis != newXaxis || Yaxis != newYaxis) {
+		if (alive && valid && (Xaxis != newXaxis || Yaxis != newYaxis)) {
 			TeleportText(client, plugin, name, newXaxis, newYaxis);
 		}
 	}
@@ -328,11 +322,14 @@ void ChangeText(int client, const char[] plugin, const char[] name, VGUIParams p
 			static char szColor[16];
 			FormatEx(szColor, sizeof(szColor), "%i %i %i %i", newColor[0], newColor[1], newColor[2], newColor[3]);
 			json.SetString("color", szColor);
-			if (IsPlayerAlive(client)) {
+			if (alive && valid) {
 				DeleteText(client, plugin, name, false);
 				CreateText(client, plugin, name, view_as<VGUIParams>(json), true);
 			}
 		}
+	}
+	if (!valid) {
+		CreateText(client, plugin, name, view_as<VGUIParams>(json), true);
 	}
 }
 
