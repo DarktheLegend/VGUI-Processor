@@ -6,14 +6,11 @@
 #endif
 #define _vgui_processor_included
 
-
-#include <json>
-
 #if !defined REQUIRE_PLUGIN
 public __pl_vgui_processor_SetNTVOptional()
 {
 	MarkNativeAsOptional("VGUI_CreateText");
-	MarkNativeAsOptional("VGUI_ChangeText");
+	MarkNativeAsOptional("VGUI_UpdateText");
 	MarkNativeAsOptional("VGUI_DeleteText");
 	MarkNativeAsOptional("VGUI_ExistText");
 }
@@ -32,7 +29,7 @@ public SharedPlugin __pl_vgui_processor =
 
 native bool VGUI_CreateText(int client, const char[] name, VGUIParams params);
 
-native bool VGUI_ChangeText(int client, const char[] name, VGUIParams params);
+native bool VGUI_UpdateText(int client, const char[] name);
 
 native bool VGUI_DeleteText(int client, const char[] name);
 
@@ -40,80 +37,106 @@ native bool VGUI_ExistText(int client, const char[] name);
 
 native void VGUI_PluginUnload();
 
-methodmap VGUIParams < JSON_Object {
-	public void SetColorString(const char[] color, bool hidden = false) {
+methodmap VGUIParams < StringMap {
+	public void SetColorString(const char[] color) {
+		char oldColor[16];
+		if (!this.GetString("color", oldColor, sizeof oldColor) || strcmp(oldColor, color) != 0) {
+			this.SetValue("color_changed", true);
+		}
 		this.SetString("color", color);
-		this.SetKeyHidden("color", hidden);
 	}
-	public void SetColor(const int color[4], bool hidden = false) {
+	public void SetColor(const int color[4]) {
 		static char szColor[16];
 		FormatEx(szColor, sizeof(szColor), "%d %d %d %d", color[0], color[1], color[2], color[3]);
-		this.SetColorString(szColor, hidden);
+		this.SetColorString(szColor);
 	}
-	public void SetXaxis(float Xaxis, bool hidden = false) {
-		this.SetFloat("x-axis", Xaxis);
-		this.SetKeyHidden("x-axis", hidden);
-	}
-	
-	public void SetYaxis(float Yaxis, bool hidden = false) {
-		this.SetFloat("y-axis", Yaxis);
-		this.SetKeyHidden("y-axis", hidden);
+	public void SetXaxis(float x) {
+		this.SetValue("x-axis", x);
+		this.SetValue("x-axis_changed", true);
 	}
 	
-	public void SetText(const char[] text, const int maxlen, bool hidden = false) {
+	public void SetYaxis(float y) {
+		this.SetValue("y-axis", y);
+		this.SetValue("y-axis_changed", true);
+	}
+	
+	public void SetText(const char[] text, const int maxlen) {
+		int oldMaxLen;
+		if (this.GetValue("textlen", oldMaxLen)) {
+			char[] old = new char[oldMaxLen];
+			if (!this.GetString("text", old, oldMaxLen)) {
+				this.SetValue("text_changed", true);
+			} else if (strcmp(text, old) != 0) {
+				this.SetValue("text_changed", true);
+			}
+		} else {
+			this.SetValue("text_changed", true);
+		}
+		
 		this.SetString("text", text);
-		this.SetInt("textlen", maxlen);
-		this.SetKeyHidden("text", hidden);
-		this.SetKeyHidden("textlen", hidden);
+		this.SetValue("textlen", maxlen);
 	}
 	
 	public bool GetColor(int color[4]) {
-		if (this.HasKey("color")) {
-			static char szColor[16], temp[4][4];
-			this.GetString("color", szColor, sizeof(szColor));
-			ExplodeString(szColor, " ", temp, sizeof(temp), sizeof(temp[]));
-			for (int i = 0; i < sizeof(temp[]); i++) {
-				color[i] = StringToInt(temp[i]);
+		char szColor[16];
+		if (this.GetString("color", szColor, sizeof szColor)) {
+			char szSplitColor[4][4];
+			ExplodeString(szColor, " ", szSplitColor, sizeof szSplitColor, sizeof szSplitColor[]);
+			for (int i = 0; i < sizeof szSplitColor[]; i += 1) {
+				color[i] = StringToInt(szSplitColor[i]);
 			}
 			return true;
 		}
 		return false;
 	}
 	
-	public bool GetXaxis(float& Xaxis) {
-		if (this.HasKey("x-axis")) {
-			Xaxis = this.GetFloat("x-axis", 0.0);
-			return true;
-		}
-		return false;
+	public bool HasColorChanges() {
+		return this.ContainsKey("color_changed");
 	}
 	
-	public bool GetYaxis(float& Yaxis) {
-		if (this.HasKey("y-axis")) {
-			Yaxis = this.GetFloat("y-axis", 0.0);
-			return true;
-		}
-		return false;
+	public bool GetXaxis(float& x) {
+		return this.GetValue("x-axis", x);
+	}
+	
+	public bool HasXaxisChanges() {
+		return this.ContainsKey("x-axis_changed");
+	}
+	
+	public bool GetYaxis(float& y) {
+		return this.GetValue("y-axis", y);
+	}
+	
+	public bool HasYaxisChanges() {
+		return this.ContainsKey("y-axis_changed");
 	}
 	
 	public int GetTextLength() {
-		return this.GetInt("textlen");
+		int textlen;
+		this.GetValue("textlen", textlen);
+		return textlen;
 	}
 	
 	public bool GetText(char[] text, int textlen) {
-		if (this.HasKey("text")) {
-			this.GetString("text", text, textlen);
-			return true;
-		}
-		return false;
+		return this.GetString("text", text, textlen);
+	}
+	
+	public bool HasTextChanges() {
+		return this.ContainsKey("text_changed");
+	}
+	
+	public void ClearChanged() {
+		this.Remove("color_changed");
+		this.Remove("x-axis_changed");
+		this.Remove("y-axis_changed");
+		this.Remove("text_changed");
 	}
 	
 	public void Clean() {
-		json_cleanup(this);
+		this.Clear();
 	}
 	
 	public VGUIParams() {
-		VGUIParams self = view_as<VGUIParams>(new JSON_Object());
+		VGUIParams self = view_as<VGUIParams>(new StringMap());
 		return self;
 	}
 }
